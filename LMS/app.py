@@ -184,41 +184,6 @@ def my_page():
         conn.close() # finally 종료.
 
 
-#회원탈퇴=============================================================================================================
-# @app.route('/member/delete', methods=['get','post'])
-# def member_delete():
-    # 로그인 여부 확인
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    user_id = session.get('user_id')
-
-    conn = Session.get_connection()
-    try:
-        with conn.cursor() as cursor:
-            if request.method == 'GET':
-                sql = "delete from members where id + %s"
-                cursor.execute(sql, (user_id,))
-                conn.commit()
-                # 너의 데이터만 지워줄게. (본인 확인)
-                # 사용자가 입력한 값이 아니라, 서버가 들고 있는 세션 정보로 삭제 대상을 정함.
-
-                # 세션 정보 초기화 (로그아웃 처리)
-                session.clear()
-
-                return "<script>alert('탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다. '); location.href='/my page';</script>"
-
-
-    except Exception as e:
-        print(f"회원탈퇴 중 에러 : {e}")
-        return "회원 탈퇴 중 오류가 발생했습니다. /n member_edit() 메서드를 확인하세요."
-
-
-    finally:
-        conn.close()
-#==================================================================================================================
-
-
 @app.route('/') # url 생성용 코드 http://localhost:5000/ or http://내ip(192.168.0.157.:5000
 def index():
     return render_template('main.html')
