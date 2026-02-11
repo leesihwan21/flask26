@@ -20,11 +20,11 @@ class Session:
         print("get_connection()메서드 호출 - mysql에 접속됩니다.")
 
         return pymysql.connect(
-            host='192.168.0.150',
-            user='mbc320',
+            host='192.168.0.150', # 강사님 호스트로 사용함. 원래 내꺼는 localhost, 192.168.0.157
+            user='mbc320', # 강사님껄로 사용함, 원래 내꺼는 mbc
             password='1234',  # 본인의 비밀번호로 변경
             db='lms',
-            charset='utf8mb4',
+            charset='utf8mb4', # 한국어 지원용.
             cursorclass=pymysql.cursors.DictCursor
             # dict 타입으로 처리함 (딕셔너리타입 k : v )
         )

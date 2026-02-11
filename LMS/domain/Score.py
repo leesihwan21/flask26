@@ -1,13 +1,14 @@
 class Score:
-    def __init__(self, member_id, kor, eng, math, id=None):
+    def __init__(self, member_id, kor, eng, math, id=None, date_str=None):
         self.id = id  # scores 테이블의 PK
         self.member_id = member_id  # members 테이블의 id와 연결된 FK
         self.kor = kor
         self.eng = eng
         self.math = math
+        self.date_str = date_str # 날짜 필드 추가
 
     # 파이썬 계산 프로퍼티 (메서드지만 변수처럼 써먹는다.)
-    @property
+    @property # Score.total() 해야 메서드임. () 를 안하려고 property를 사용한거임.
     def total(self):  # Score.total -> 계산됨
         return self.kor + self.eng + self.math
 
@@ -38,5 +39,7 @@ class Score:
             member_id=row.get('member_id'),  # uid 대신 member_id 사용
             kor=int(row.get('korean', 0)),
             eng=int(row.get('english', 0)),
-            math=int(row.get('math', 0))
+            math=int(row.get('math', 0)),
+            date_str=row.get('date_str')
         )
+

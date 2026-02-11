@@ -29,8 +29,8 @@
                             성적관리
                         </a>
                         <ul class="dropdown-menu shadow">
-                            {# 1. 모든 로그인 사용자가 볼 수 있는 메뉴 #}
-                            {% if session.get('user_id') %} <!-- {} -> 중괄호 안에 코드. 플라스크랑 연동하는 코드-->
+                            {# 1. user 권한으로 로그인 사용자가 볼 수 있는 메뉴 #}
+                            {% if session.get('user_role') == 'user' %} <!-- {} -> 중괄호 안에 코드. 플라스크랑 연동하는 코드-->
                                 <li><a class="dropdown-item" href="/score/my">내 성적 조회</a></li>
                             {% endif %}
 
