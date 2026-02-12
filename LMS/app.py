@@ -1,19 +1,24 @@
 # pip install flask -> flask 설치하는 것. 서버처럼 돌리는 것. ip에 포트번호 생성. while문 대체
 # flask(플라스크)란
 # 파이썬으로 만든 db 연동 콘솔 프로그램을 웹으로 연결하는 프레임워크다.
-from flask import Flask, render_template, request, redirect, url_for, session
+import os.path
+
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from pymysql import connect
+
+# 터미널에서 pip install flask 다운로드. 후 진행.
 
 #          플라스크 클래스,    프론트연결,     요청,응답, 주소전달,  주소로보냄, 상태저장
 from LMS.common import Session
 from LMS.domain import Board, Score
+from LMS.service import PostService
 
-# ======================================================
+# ######################################################################################################################
 # 풀스텍을 할 때 순서
 # 1. UI - > 프론트를 먼저 구상을 해야함. 레이아웃? (프론트 화면)
 # 2. LMS DB (MySQL) -> database
 # 3. 순서를 ai 한테 물어볼 것.
-# ======================================================
+# ######################################################################################################################
 
 
 
@@ -129,7 +134,7 @@ def member_edit():
 
     # 있으면 db연결 시작!
     conn = Session.get_connection()
-    try :
+    try:
         with conn.cursor() as cursor:
             if request.method == 'GET':
                 # 기존 정보 불러오기
@@ -189,9 +194,9 @@ def mypage():
 
     finally:
         conn.close()
-#################################### 회원 CRUD END #################################################################
+#################################### 회원 CRUD END #####################################################################
 
-#################################### 게시판 CRUD ##################################################################
+#################################### 게시판 CRUD ########################################################################
 
 @app.route('/board/write', methods=['GET', 'POST']) # http://localhost:5000/board/write
 def board_write():
@@ -326,9 +331,9 @@ def board_delete(board_id):
         conn.close()
 
 
-#################################### 게시판 CRUD END ###############################################################
+#################################### 게시판 CRUD END ####################################################################
 
-#################################### 성적 CRUD 시작  ###############################################################
+#################################### 성적 CRUD 시작  #####################################################################
 # 주의사항 : ROLE에 ADMIN과 MANAGER만 CUD (CREATE, UPDATE, DELETE) 만 제공한다.
 # 일반 사용자는 ROLE이 USER이고 자신의 성적만 볼 수 있다.
 @app.route('/score/add') # http://localhost:5000/score/add?uid=test1&name=test1(uid key, test1 value)
@@ -389,6 +394,7 @@ def score_save():
     kor = int(request.form.get('korean', 0))
     eng = int(request.form.get('english', 0))
     math = int(request.form.get('math', 0))
+    issue_date = request.form.get('issue_date')
 
     conn = Session.get_connection()
     try:
@@ -576,7 +582,145 @@ def score_my():
     finally:
         conn.close()
 
-#################################### 성적 CRUD 종료  ################################################################
+#################################### 성적 CRUD 종료  ####################################################################
+
+#################################### 파일(자료)게시판 CRUD 시작 ###########################################################
+
+# 파일처리용 게시판은 특징
+# 1. 파일 업로드 / 다운로드가 가능해야함.
+# 2. 단일 파일 / 다중 파일 업로드가 가능해야함. -> 다중 파일에 대해서 공부할 것.
+# 3. 서비스 패키지를 활용 -> app.py 에 한번에 다 몰려있어서 하나씩 서비스 객체로 뺀다.
+# 4. /UPLOAD라는 폴더를 사용하겠다. / 용량제한 16MB
+# 5. 파일명 중복방지용 코드 활용하겠다. -> 동일파일명이 올라갔을 떄 어떻게 처리할 건지?
+# 6. DB에서 부모객체가 삭제되면 자식객체도 삭제 되게 CASCADE 처리함.
+
+UPLOAD_FOLDER = 'uploads/'
+# 폴더가 없으면 자동 생성
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER) # makedirs -> 폴더생성 make directory
+    # 폴더 생성용 코드는 os.makedirs(경로)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# 최대 업로드 용량 제한 (예: 16mb)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# bit -> 0, 1
+# byte -> 8 bit 를 1 byte 라고 부름. -> 2진법 칸 8개
+# 8 byte 는 0~255 개를 가지고 있음. 256개.
+# 1KB -> 1024Byte
+# 1MB -> 1024KByte
+# 1GB -> 1024MByte
+# 1TB -> 1024GByte
+# 1PB -> 1024TByte
+# 1XB -> 1024PByte
+
+@app.route('/filesboard/write', methods=['GET','POST'])
+def filesboard_write():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        # 핵심 : getlist를 사용해야 리스트 형태로 가져옴.
+        files = request.files.getlist('files')
+
+        if PostService.save_post(session['user_id'], title, content, files):
+            return "<script>alert('게시글이 등록되었습니다.'); location.href='/filesboard';</script>"
+        else:
+            return "<script>alert('게시글 등록이 안 되었습니다.');history.back();</script>"
+
+    return render_template('filesboard_write.html')
+
+
+# 파일게시물 자세히보기
+@staticmethod
+def get_post_detail(post_id):
+    """게시글 상세 정보와 첨부파일 정보를 함께 조회"""
+    conn = Session.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 조회수 증가
+            cursor.execute("UPDATE posts SET view_count = view_count + 1 WHERE id = %s", (post_id,))
+
+            # 2. 게시글 정보 조회 (작성자 이름 포함)
+            sql_post = """
+                        SELECT p.*, m.name as writer_name 
+                        FROM posts p
+                        JOIN members m ON p.member_id = m.id
+                        WHERE p.id = %s
+                """
+            cursor.execute(sql_post, (post_id,))
+            post = cursor.fetchone()
+
+            # 3. 첨부파일 정보 조회
+            cursor.execute("SELECT * FROM attachments WHERE post_id = %s", (post_id,))
+            files = cursor.fetchall()
+
+            conn.commit()
+            return post, files
+            # post는 posts에 있는 자료, files는 첨부 파일에 대한 자료. 이 2개가 넘어감.
+    finally:
+        conn.close()
+
+
+# 파일 게시물 목록
+@staticmethod
+def get_posts():
+    """작성자 이름과 첨부파일 개수를 함께 조회"""
+    conn = Session.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # 서브쿼리를 사용하여 해당 게시글에 연결된 첨부파일 개수(file_count)를 가져옵니다.
+            sql = """
+                       SELECT p.*, m.name as writer_name,
+                              (SELECT COUNT(*) FROM attachments WHERE post_id = p.id) as file_count
+                       FROM posts p
+                       JOIN members m ON p.member_id = m.id
+                       ORDER BY p.created_at DESC
+                   """
+            cursor.execute(sql)
+            return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+
+# 파일 게시판 목록
+@app.route('/filesboard')
+def filesboard_list():
+    posts = PostService.get_posts()
+    return render_template('filesboard_list.html', posts=posts)
+
+
+# 파일 게시판 상세 보기
+@app.route('/filesboard/view/<int:post_id>')
+def filesboard_view(post_id):
+    post, files = PostService.get_post_detail(post_id)
+    if not post:
+        return "<script>alert('해당 게시글이 없습니다.'); location.href='/filesboard';</script>"
+    return render_template('filesboard_view.html', post=post, files=files)
+
+
+# send_from_directory 사용하여 자료 다운로드 가능
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    # 파일이 저장된 폴더(uploads)에서 파일을 찾아 전송합니다.
+    # 프론트 <a href="{{ url_for('download_file', filename=file.save_name) }}" ...> 이부분 처리용
+    # filename은 서버에 저장된 save_name입니다.
+    # 브라우저가 다운로드할 때 보여줄 원본 이름을 쿼리 스트링으로 받거나 DB에서 가져와야 합니다.
+    origin_name = request.args.get('origin_name')
+    return send_from_directory('uploads/', filename, as_attachment=True, download_name=origin_name)
+    # from flask import send_from_directory 필수
+
+    #   return send_from_directory('uploads/', filename)는 브라우져에서 바로 열어버림
+    #   as_attachment=True 로 하면 파일 다운로드 창을 띄움
+    #   저장할 파일명은 download_name=origin_name 로 지정
+
+
+
+
+############################################# 파일 upload 게시판 The end. ################################################
+
 
 @app.route('/') # url 생성용 코드 http://localhost:5000/ or http://192.168.0.???:5000
 def index():
@@ -587,6 +731,7 @@ def index():
 if __name__ == '__main__':
 
     app.run(host='0.0.0.0', port=5000, debug=True)
+    # port 번호 5000 은 강사님 번호이고 5001 번부터 연습하면 됨.
     # host='0.0.0.0' 누가요청하던 응답해라(모두 들어올 수 있게 설정함)
     # port=5000 플라스크에서 사용하는 포트번호
     # debug=True 콘솔에서 디버그를 보겠다.

@@ -24,6 +24,7 @@
                 <td>{{ s.math }}</td>
                 <td>{{ s.total }}</td>
                 <td>{{ s.avg }}</td>
+                <td>{{ s.issue_date if s.issue_date else '-' }}</td>
                 <td><span class="badge {{ 'bg-success' if s.grade == 'A' else 'bg-secondary' }}">{{ s.grade }}</span></td>
             </tr>
             {% endfor %}
