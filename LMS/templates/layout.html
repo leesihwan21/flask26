@@ -1,8 +1,8 @@
-<!DOCTYPE html> <!-- html 5 타입-->
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 뷰포트 반응형 웹 화면 크기-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>종합 관리 시스템</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -19,7 +19,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/board">자유게시판</a> <!-- href 앱.router 에 넣음-->
+                        <a class="nav-link" href="/board">자유게시판</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/filesboard">자료실(파일게시판)</a>
@@ -30,7 +30,7 @@
                         </a>
                         <ul class="dropdown-menu shadow">
                             {# 1. user 권한으로 로그인 사용자가 볼 수 있는 메뉴 #}
-                            {% if session.get('user_role') == 'user' %} <!-- {} -> 중괄호 안에 코드. 플라스크랑 연동하는 코드-->
+                            {% if session.get('user_role') == 'user' %}
                                 <li><a class="dropdown-item" href="/score/my">내 성적 조회</a></li>
                             {% endif %}
 
@@ -69,9 +69,8 @@
     </nav>
 
     <div class="container">
-         <!-- 본문 영역으로 다른 파일이 이 Layout을 겹쳐 보이게 처리하는 용도 -->
+        <!-- 본문 영역으로 다른파일이 이 레이아웃을 겹쳐 보이게 처리하는 용도-->
         {% block content %}{% endblock %}
-      <!-- 로그인 페이지 부터 쭉 들어가면 됨. -->
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

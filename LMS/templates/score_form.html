@@ -32,11 +32,6 @@
                                value="{{ score.math if score else '' }}" min="0" max="100" required>
                     </div>
 
-                    <div class="mb-3">
-                        <label>성적 발행일</label>
-                        <input type="date" name="issue_date" class="form-control" required>
-                    </div>
-
                     <div class="d-grid mt-4">
                         <button type="submit" class="btn btn-primary btn-lg">
                             {% if score %}수정 내용 저장{% else %}성적 등록하기{% endif %}

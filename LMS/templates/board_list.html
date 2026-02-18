@@ -4,17 +4,17 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
         <h2 class="mb-4">자유 게시판</h2>
-        <table class="table table-hover">
+        <table class="table table-hover ">
             <thead class="table-dark">
-                <tr> <!-- tr 가로 한줄 -->
+                <tr>
                     <th>번호</th>
                     <th>제목</th>
                     <th>작성자</th>
                     <th>날짜</th>
                 </tr>
             </thead>
-            <tbody> <!-- 몸통 영역 테이블-->
-                {% for b in boards %} <!-- {} 중괄호 안에 % 템플릿 랜더가 처리함. -->
+            <tbody>
+                {% for b in boards %}
                 <tr>
                     <td>{{ b.id }}</td>
                     <td><a href="/board/view/{{ b.id }}" class="text-decoration-none text-dark">{{ b.title }}</a></td>
@@ -29,4 +29,4 @@
         </div>
     </div>
 </div>
-{% endblock %} <!-- endblock for 문이 끝났다. -->
+{% endblock %}

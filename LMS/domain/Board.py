@@ -7,14 +7,14 @@ class Board:
         self.active = active  # 삭제 여부 (boolean 1/0)
 
         # JOIN을 통해 가져올 추가 정보들 (선택 사항)
-        self.created_at = created_at
         self.writer_name = writer_name
         self.writer_uid = writer_uid
+        self.created_at = created_at
 
     @classmethod
     def from_db(cls, row: dict):
-        # db 에 있는 정보 내용에 row 한 줄을 dict 타입으로 가져와 객체로 만든다. 딕셔너리 타입으로 가져와. key : value, key : value.
         if not row: return None
+        # db에 있는 내용의 1줄을 dict 타입으로 가져와 객체로 만듬
         return cls(
             id=row.get('id'),
             title=row.get('title'),

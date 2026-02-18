@@ -1,38 +1,20 @@
-# pip install flask -> flask 설치하는 것. 서버처럼 돌리는 것. ip에 포트번호 생성. while문 대체
-# flask(플라스크)란
-# 파이썬으로 만든 db 연동 콘솔 프로그램을 웹으로 연결하는 프레임워크다.
-import os.path
+# pip install flask
+# 플라스크란?
+# 파이썬으로 만든 db연동 콘솔 프로그램을 웹으로 연결하는 프레임워크임
+# 프레임워크 : 미리 만들어 놓은 틀 안에서 작업하는 공간
+# app.py 는 플라스크로 서버를 동작하기 위한 파일명(기본파일)
+# static, templates 폴더 필수 (프론트용 파일 모이는 곳)
+# static : 정적파일을 모아 놓음 (html, css, js)
+# templates : 동적파일을 모아 놓음 (crud 화면, 레이아웃, index 등....)
+import os
 
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
-from pymysql import connect
 
-# 터미널에서 pip install flask 다운로드. 후 진행.
-
-#          플라스크 클래스,    프론트연결,     요청,응답, 주소전달,  주소로보냄, 상태저장
 from LMS.common import Session
 from LMS.domain import Board, Score
 from LMS.service import PostService
 
-# ######################################################################################################################
-# 풀스텍을 할 때 순서
-# 1. UI - > 프론트를 먼저 구상을 해야함. 레이아웃? (프론트 화면)
-# 2. LMS DB (MySQL) -> database
-# 3. 순서를 ai 한테 물어볼 것.
-# ######################################################################################################################
-
-
-
-# 프레임워크 : 미리 만들어 놓은 틀 안에서 작업. -> 미리 만들어 놓은 것은 폴더가 정해져 있는 것.
-# app.py 는 플라스크로 서버를 동작하기 위한 파일명(기본 파일)
-
-# static, templates 폴더 필수 (프론트용 파일 모이는 곳)
-# static : 정적 파일을 모아놓는 것. (html, css, js,,,)
-# templates : 동적 파일을 모아놓는 것. (crud 화면, 레이아웃, 인덱스 등....)
-
-app = Flask(__name__)
-app.secret_key = '1234'
-# RuntimeError ; The session is unavailable because no secret key was set.
-# set the secret_key on the application to something unique and secret.
+#                플라스크   프론트연결     요청,응답   주소전달    주소생성   상태저장소
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -134,7 +116,7 @@ def member_edit():
 
     # 있으면 db연결 시작!
     conn = Session.get_connection()
-    try:
+    try :
         with conn.cursor() as cursor:
             if request.method == 'GET':
                 # 기존 정보 불러오기
@@ -167,10 +149,6 @@ def member_edit():
 
 @app.route('/mypage') # http://localhost:5000/mypage get요청시 처리됨
 def mypage():
-    # @app.route('/mypage) -> 뒤에 / 마지막 슬래시를 붙여주냐 안 붙여주냐에 따라서도 Flask는 이를 서로 다른 방식으로 처리함.
-    # 슬래시가 있는 경로 (/board/) 는 마치 ** 디렉토리(폴더)** 처럼 취급함.
-    # 슬래시가 없는 경로 (/mypage) 는 마치 하나의 파일처럼 취급함.
-    # Flask의 설계 의도는 "URL 의 유일성"을 보장하기 위함이다.
     if 'user_id' not in session: # 로그인상태인지 확인
         return redirect(url_for('login')) # 로그인아니면 http://localhost:5000/login으로 보냄
 
@@ -194,9 +172,9 @@ def mypage():
 
     finally:
         conn.close()
-#################################### 회원 CRUD END #####################################################################
+#################################### 회원 CRUD END ###############################################################
 
-#################################### 게시판 CRUD ########################################################################
+#################################### 게시판 CRUD ##################################################################
 
 @app.route('/board/write', methods=['GET', 'POST']) # http://localhost:5000/board/write
 def board_write():
@@ -227,9 +205,8 @@ def board_write():
         finally:
             conn.close()
 
-
 # 1. 게시판 목록 조회
-@app.route('/board/') # http://localhost:5000/board
+@app.route('/board') # http://localhost:5000/board
 def board_list():
     conn = Session.get_connection()
     try:
@@ -239,7 +216,7 @@ def board_list():
                 SELECT b.*, m.name as writer_name 
                 FROM boards b 
                 JOIN members m ON b.member_id = m.id 
-                ORDER BY b.id DESC 
+                ORDER BY b.id DESC
             """
             cursor.execute(sql)
             rows = cursor.fetchall()
@@ -331,237 +308,160 @@ def board_delete(board_id):
         conn.close()
 
 
-#################################### 게시판 CRUD END ####################################################################
+#################################### 게시판 CRUD END ###############################################################
 
-#################################### 성적 CRUD 시작  #####################################################################
-# 주의사항 : ROLE에 ADMIN과 MANAGER만 CUD (CREATE, UPDATE, DELETE) 만 제공한다.
+#################################### 성적 CRUD 시작 ################################################################
+# 주의사항 : ROLE에 ADMIN과 MANAGER만 CUD를 제공한다.
 # 일반 사용자는 ROLE이 USER이고 자신의 성적만 볼 수 있다.
-@app.route('/score/add') # http://localhost:5000/score/add?uid=test1&name=test1(uid key, test1 value)
+
+@app.route('/score/add') # HTTP://localhost:5000/score/add?uid=test1&name=test1
 def score_add():
-    if session.get('user_role') not in  ('admin','manager'):
+    if session.get('user_role') not in ('admin', 'manager'):
         return "<script>alert('권한이 없습니다.'); history.back();</script>"
 
-
-    # request.args는 URL을 통해서 넘어오는 값. 주소뒤에 ? KEY, VALUE&KEY VALUE... 이런식으로 계속 쓸 수 있다.(주소창에)
-    target_uid = request.args.get('uid') # student 01 번을 가져옴 -> test1
-    target_name = request.args.get('name') # '홍길동'을 가져옴.
+    # requset.args는 URL을 통해서 넘어오는 값 주소뒤에 ?K=V&K=V ~~~~~
+    target_uid = request.args.get('uid')
+    target_name = request.args.get('name')
 
     conn = Session.get_connection()
     try:
         with conn.cursor() as cursor:
-            # 1. 대상 학생 id 찾기
-            cursor.execute("select id from members where uid = %s", (target_uid,))
+            # 1. 대상 학생의 id 찾기
+            cursor.execute("SELECT id FROM members WHERE uid = %s", (target_uid,))
             student = cursor.fetchone()
 
             # 2. 기존 성적이 있는지 조회
-            existing_score = None # 성적이 있을 수도 있고 없을 수도 있고. 없으면 INSERT 있으면 수정 UPDATE. INDATE? -> INSERT + UPDATE
-            if student: # 학생번호가 있으면 밑에 함수문 실행
-                cursor.execute("select * from scores where member_id = %s", (student['id'],)) # student id 는 학생의 번호
+            existing_score = None
+            if student:
+                cursor.execute("SELECT * FROM scores WHERE member_id = %s", (student['id'],))
                 row = cursor.fetchone()
-                print(row) # 출력 테스트용 코드로 dict 타입으로 출력됨.
+                print(row) # 테스트용 코드로 dict 타입으로 콘솔 출력
                 if row:
                     # 기존에 만든 Score.from_db 활용
                     existing_score = Score.from_db(row)
                     # 위쪽에 객체 로드 처리 : from LMS.domain import Board, Score
 
-
             return render_template('score_form.html',
                                    target_uid=target_uid,
                                    target_name=target_name,
-                                   score=existing_score) # score 객체 전달 # existing_score 써야 나옴.
-                                   # 신규 등록창을 보고 싶게 하려면 MySQL 에 저장된 Score 객체를 None 값으로 처리하면 됨.
-                                  # 그러면, 신규등록창이 나옴. 수정창을 보고싶다 하면 ? existing_score.
+                                   score=existing_score)  # score 객체 전달
     finally:
         conn.close()
 
 
-@app.route('/score/save', methods=['POST']) # POST만을 쓰는 이유는, DB, MySQL에 텍스트를 저장하는 것 뿐 아니라,
-# 서버에 무언가 흔적을 남기거나 바꾸는 "모든 행위" 에 대해서 POST를 사용한다.
-# 데이터의 생성/수정/삭제 (CUD) -> DB에 새로운 내용을 집어넣거나, 기존 내용을 고치거나, 지울떄 사용하고
-# 보안이 필요한 정보 -> 예를 들면 로그인 할 떄 아이디랑 비밀번호를 GET으로 보내면 주소창에  ??? ID = ADMIN&PW=1234 ,, 이런식으로..???
-# 그래서 POST는 데이터 주소가 아닌 HTML BODY 영역 안에 숨겨서 보낸다.
-# 용량이 큰 데이터를 다룰 때, 주소창(GET)은 글자 수 제한이 있다. 하지만, POST는 이미지 파일, 긴 본문의 글, 영상 등 대용량 데이터를 보낼 수 있다.
-# 한마디로, GET은 웹 브라우저 창을 띄울때, POST는 HTML, CSS, JS 를 사용할 떄 사용한다.
+@app.route('/score/save', methods=['POST'])
 def score_save():
-    if session.get('user_role') not in ('admin','manager'):
+    if session.get('user_role') not in ('admin', 'manager'):
         return "권한 오류", 403
-    # 웹 페이지에 오류 페이지로 교체
+        # 웹페이지에 오류 페이지로 교체
 
     # 폼 데이터 수집
     target_uid = request.form.get('target_uid')
-    print(f"---[디버깅] HTML에서 넘어온 UID: {target_uid}-----")
-    # member_id = request.form.get('member_id')
     kor = int(request.form.get('korean', 0))
     eng = int(request.form.get('english', 0))
     math = int(request.form.get('math', 0))
-    issue_date = request.form.get('issue_date')
 
     conn = Session.get_connection()
     try:
         with conn.cursor() as cursor:
-            # 1. 대상 학생의 id(pk) 가져오기 -> 학생의 번호를 가져온다.
-            sql_find_member = "select id from members where uid = %s"
-            cursor.execute(sql_find_member, (target_uid,))
-            # cursor.execute("select * from scores where member_id = %s", (target_uid,))
-            member = cursor.fetchone()
-            # member = cursor.fetchone()
-            print(member) # 학번 출력
+            # 1. 대상 학생의 id(PK) 가져오기 -> 학생의 번호를 가져옴
+            cursor.execute("SELECT id FROM members WHERE uid = %s", (target_uid,))
+            student = cursor.fetchone()
+            print(student) # 학번 출력
+            if not student:
+                return "<script>alert('존재하지 않는 학생입니다.'); history.back();</script>"
 
-            if not member: # 학번이 없다면 없으면?
-                print(f"--- [오류!!] members 테이블에 {target_uid} 학생이 존재하지 않습니다. !!!-----")
-                return "<script>alert('존재하지 않는 학생입니다.'); history.back();</script>" # 존재하지 않으면 history back 뒤로가기
-
-            # 2. MySQL 에서 실제 저장된 값을 찾아낸 예를들면 숫자 PK(PRIMARY KEY  : 5) 변수에 담는다.
-            #real_db_id = member['id']
-            #cursor.execute("select id from scores where member_id = %s", (real_db_id,))
-            #is_exist = cursor.fetchone()
-
-            #if is_exist:
-                # update 로직
-                sql = "update scores set korean=%s, english=%s, math=%s, total=%s, average=%s, where member_id = %s"
-
-            #else:
-                # insert 로직
-                sql = "insert into scores values (%s, %s, %s, %s, %s, %s)"
-            #conn.commit()
-            # return f"<script>alert('{target_uid} 저장 완료.'); history.back();</script>"
-            # print(f"---[성공] {target_uid} 학생의 진짜 번호는 {real_db_id}번 입니다.-----")
-
-            # 3. 진짜 번호를 변수에 담고 출력
-            # real_id = member['id']
-            # print(f"-----[디버깅] 찾은 실제 번호(PK) : {real_id}---")
-
-            #============ DB (MySQL) 와 app.py 랑 연동해서 웹 브라우저로 화면에 내보내고 싶을 떄
-            #============ 웹 브라우저(홈페이지) 에서 예를들면 mysql에서는 members 라고 되어있는데
-            #============ 파이썬에서는 target_uid 로 해놔서 "존재하지 않는 학생. 존재하지 않습니다." 라고 나오게 되면
-            # scores 테이블의 member_id 컬럼은 members 테이블의 id(숫자 PK)를 참조하는 숫자 타입
-            # MySQL에서 WHERE member_id = 'test1'이라고 검색하면, 숫자가 들어가야 할 자리에 문자가 들어왔으므로 검색 결과가 0건(None)이 됩니다.
-            # 결과가 None 이니 파이썬에 코드는 if not student 조건문에 걸려서 , "존재하지 않는 학생" "존재하지 않습니다"? 라고 나오는 것이다.
-
-            # 2. score 객체 생성 (계산 프로퍼티 활용)
-            temp_score = Score(member_id=member['id'], kor=kor, eng=eng, math=math)
-            #             __init__ 를 활용하여 객체 생성
+            # 2. Score 객체 생성 (계산 프로퍼티 활용)
+            temp_score = Score(member_id=student['id'], kor=kor, eng=eng, math=math)
+            #            __init__ 를 활용하여 객체 생성
 
             # 3. 기존 데이터가 있는지 확인
-            cursor.execute("select id from scores where member_id = %s", (member['id'],))
-            is_exist = cursor.fetchone() # 성적이 있으면 id가 나오고, 없으면  None 처리.
+            cursor.execute("SELECT id FROM scores WHERE member_id = %s", (student['id'],))
+            is_exist = cursor.fetchone() # 성적이 있으면 id가 나오고 없으면 None
 
             if is_exist:
                 # UPDATE 실행
                 sql = """
-                     UPDATE scores SET korean=%s, english=%s, math=%s,
-                                        total=%s, average=%s, grade=%s
-                     WHERE member_id = %s
+                    UPDATE scores SET korean=%s, english=%s, math=%s, 
+                                      total=%s, average=%s, grade=%s
+                    WHERE member_id = %s
                 """
-                cursor.execute(sql, (temp_score.kor, temp_score.eng,
-                                     temp_score.math, temp_score.total,
-                                     temp_score.avg, temp_score.grade,
-                                     member['id'])) # student 는 WHERE 조건. MySQL.
-
+                cursor.execute(sql, (temp_score.kor, temp_score.eng, temp_score.math,
+                                     temp_score.total, temp_score.avg, temp_score.grade,
+                                     student['id']))
             else:
                 # INSERT 실행
                 sql = """
                     INSERT INTO scores (member_id, korean, english, math, total, average, grade)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
-                cursor.execute(sql, (member['id'], temp_score.kor, temp_score.eng, temp_score.math,
+                cursor.execute(sql, (student['id'], temp_score.kor, temp_score.eng, temp_score.math,
                                      temp_score.total, temp_score.avg, temp_score.grade))
 
-                conn.commit()
-                return f"<script>alert('{target_uid} 학생 성적 저장 완료.');location.href='/score/list';</script>"
-
-    #except Exception as e:
-        #conn.rollback()  # 에러 발생 시 되돌리기
-        #print(f"Error: {e}")  # 에러 로그 확인용
-        #return f"저장 중 오류 발생: {e}"
-
+            conn.commit()
+            return f"<script>alert('{target_uid} 학생 성적 저장 완료!'); location.href='/score/list';</script>"
     finally:
         conn.close()
 
-@app.route('/score/list') # http://localhost:5000/score/list -> 기본적으로 get 방식. methods 삽입 안하면
+
+@app.route('/score/list') # http://localhost:5000/score/list -> get
 def score_list():
-    # 1. 권한 체크
-    if session.get('user_role') not in ('admin','manager'):
-        return "<script>alert('권한이 없습니다.)'); history.back();</script>"
+    # 1. 권한 체크 (관리자나 매니저만 볼 수 있게 설정)
+    if session.get('user_role') not in ('admin', 'manager'):
+        return "<script>alert('권한이 없습니다.'); history.back();</script>"
 
     conn = Session.get_connection()
     try:
         with conn.cursor() as cursor:
-            # 2. join을 사용하여 학생 이름 (name) 과 성적 데이터를 함께 조회
+            # 2. JOIN을 사용하여 학생 이름(name)과 성적 데이터를 함께 조회
             # 성적이 없는 학생은 제외하고, 성적이 있는 학생들만 총점 순으로 정렬
             sql = """
-                SELECT m.name, m.uid, s.*, DATE_FORMAT(s.created_at, '%%Y-%%m-%%d') as date_str 
-                FROM scores s
-                join members m on s.member_id = m.id
-                order by s.total desc
+                SELECT m.name, m.uid, s.* FROM scores s
+                JOIN members m ON s.member_id = m.id
+                ORDER BY s.total DESC
             """
-            # desc 데스크는 내림차순
             cursor.execute(sql)
             datas = cursor.fetchall()
-            print(f"MySQL 결과 테스트 : {datas}")  # 출력 테스트용
-
-            # 3. db에서 가져온 딕셔너리 리스트를 score 객체 리스트로 변환
-            score_obj = []
+            print(f" sql 결과 테스트 : {datas}")
+            # 3. DB에서 가져온 딕셔너리 리스트를 Score 객체 리스트로 변환
+            score_objects = []
             for data in datas:
-                # score 클래스에 정의하신 from_db 활용
-                s = Score.from_db(data) # 직렬화(dict 타입을 -> 객체로 만듬)
-                # 객체에 없는 이름 (name) 정보는 수동으로 살짝 넣어주기 (join에서 만든 값 사용)
+                # Score 클래스에 정의하신 from_db 활용
+                s = Score.from_db(data) # 직렬화(dict 타입을 -> 객체로 만들어)
+                # 객체에 없는 이름(name) 정보는 수동으로 살짝 넣어주기 (join에서 만든 값 사용)
                 s.name = data['name']
                 s.uid = data['uid']
-                score_obj.append(s) # 객체를 리스트 뒤에 추가함. .append 주소를 연결하는 것이 객체. 문자열이니까 객체가 없어서 객체화를 사용함.
-                # 객체를 리스트화 시켜야 하니까 직렬화로 객체화 시킴.
+                score_objects.append(s)  # 객체를 리스트에 넣음
 
-            return render_template('score_list.html', scores=score_obj)
-            # render_template       프론트 홤녀 ui에                      성적이 담긴 리스트 객체를 전달함.
+            return render_template('score_list.html', scores=score_objects)
+            #                       프론트화면 ui에                      성적이 담긴 리스트 객체를 전달함!!!
     finally:
         conn.close()
 
 
 @app.route('/score/members')
 def score_members():
-    if session.get('user_role') not in ('admin','manager'):
+    if session.get('user_role') not in ('admin', 'manager'):
         return "<script>alert('권한이 없습니다.'); history.back();</script>"
-
-    #1. 검색어 가져오기
-    # search = request.args.get('search', '')
 
     conn = Session.get_connection()
     try:
         with conn.cursor() as cursor:
-            # LEFT JOIN 을 통해서 성적이 있으면 s.id가 숫자로, 없으면 NULL 로 나옴.
+            # LEFT JOIN을 통해 성적이 있으면 s.id가 숫자로, 없으면 NULL로 나옵니다.
             sql = """
-                SELECT m.id, m.uid, s.id AS score_id
+                SELECT m.id, m.uid, m.name, s.id AS score_id 
                 FROM members m
                 LEFT JOIN scores s ON m.id = s.member_id
                 WHERE m.role = 'user'
-                ORDER BY m.name DESC
+                ORDER BY m.name ASC
             """
-
-            # 3. 검색어가 있으면 WHERE 절 추가
-            # if search:
-                # sql += "WHERE m.uid LIKE %s OR m.name LIKE %s"
-                # sql += "ORDER BY m.name ASC"
-                # cursor.execute(sql, (f"%{search}%", f"%{search}%"))
-            # else:
-                # sql += "ORDER BY m.name ASC" # 전체 정렬
-                # cursor.execute(sql)
-
-            # members = cursor.fetchall()
-
-            # 4. 검색어(search_keyword)를 꼭 넘겨주어야 화면에 출력됨.
-            # return render_template('현재 수정중인 파일이름.html',
-                               # members=members,
-                               # search_keyword=search)
-
             cursor.execute(sql)
             members = cursor.fetchall()
             return render_template('score_member_list.html', members=members)
-
     finally:
         conn.close()
 
-
-@app.route('/score/my') # http://localhost:5000/score/my - > get
+@app.route('/score/my') # http://localhost:5000/score/my -> get
 def score_my():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -569,51 +469,51 @@ def score_my():
     conn = Session.get_connection()
     try:
         with conn.cursor() as cursor:
-            # 내 id 로만 조회
+            # 내 ID로만 조회
             sql = "SELECT * FROM scores WHERE member_id = %s"
             cursor.execute(sql, (session['user_id'],))
             row = cursor.fetchone()
-            print(row) # 출력 테스트용 dict 타입으로 출력됨.
-            # Score 객체로 변환 (from _ db 활용)
+            print(row) # dict 타입으로 결과물 들어옴
+            # Score 객체로 변환 (from_db 활용)
             score = Score.from_db(row) if row else None
 
             return render_template('score_my.html', score=score)
-
     finally:
         conn.close()
 
-#################################### 성적 CRUD 종료  ####################################################################
 
-#################################### 파일(자료)게시판 CRUD 시작 ###########################################################
+
+
+#################################### 성적 CRUD END ################################################################
+#################################### 파일게시판 CRUD ################################
 
 # 파일처리용 게시판은 특징
-# 1. 파일 업로드 / 다운로드가 가능해야함.
-# 2. 단일 파일 / 다중 파일 업로드가 가능해야함. -> 다중 파일에 대해서 공부할 것.
-# 3. 서비스 패키지를 활용 -> app.py 에 한번에 다 몰려있어서 하나씩 서비스 객체로 뺀다.
-# 4. /UPLOAD라는 폴더를 사용하겠다. / 용량제한 16MB
-# 5. 파일명 중복방지용 코드 활용하겠다. -> 동일파일명이 올라갔을 떄 어떻게 처리할 건지?
-# 6. DB에서 부모객체가 삭제되면 자식객체도 삭제 되게 CASCADE 처리함.
+## 1. 파일 업로드/다운로드가 가능!!!
+## 2. 단일파일 / 다중파일 업로드 처리
+## 3. 서비스 패키지를 활용
+## 4. /upload라는 폴더를 사용하겠다. / 용량제한 16MB
+## 5. 파일명 중복 방지용코드 활용
+## 6. db에서 부모객체가 삭제되면 자식 객체도 삭제 되게 cascade 처리함!
 
 UPLOAD_FOLDER = 'uploads/'
 # 폴더가 없으면 자동 생성
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER) # makedirs -> 폴더생성 make directory
-    # 폴더 생성용 코드는 os.makedirs(경로)
+if not os.path.exists(UPLOAD_FOLDER): # import os 상단에 추가
+    os.makedirs(UPLOAD_FOLDER)
+    # 폴더 생성용 코드 os.makedirs(이름)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# 최대 업로드 용량 제한 (예: 16mb)
+# 최대 업로드 용량 제한 (예: 16MB)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # bit -> 0, 1
-# byte -> 8 bit 를 1 byte 라고 부름. -> 2진법 칸 8개
-# 8 byte 는 0~255 개를 가지고 있음. 256개.
-# 1KB -> 1024Byte
-# 1MB -> 1024KByte
-# 1GB -> 1024MByte
-# 1TB -> 1024GByte
-# 1PB -> 1024TByte
-# 1XB -> 1024PByte
+# 1byte -> 8bit  ->  0~255 (256개)
+# 1KB -> 1024byte
+# 1MB -> 1024Kbyte
+# 1GB -> 1024Mbyte
+# 1TB -> 1024Gbyte
+# 1PB -> 1024Tbyte
+# 1XB -> 1024Pbyte
 
-@app.route('/filesboard/write', methods=['GET','POST'])
+@app.route('/filesboard/write', methods=['get','POST'])
 def filesboard_write():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -621,69 +521,16 @@ def filesboard_write():
     if request.method == 'POST':
         title = request.form.get('title')
         content = request.form.get('content')
-        # 핵심 : getlist를 사용해야 리스트 형태로 가져옴.
+        # 핵심: getlist를 사용해야 리스트 형태로 가져옵니다.
         files = request.files.getlist('files')
+        # 파일 처리시 html에 필수 코드 : enctype="multipart/form-data"
 
         if PostService.save_post(session['user_id'], title, content, files):
             return "<script>alert('게시글이 등록되었습니다.'); location.href='/filesboard';</script>"
         else:
-            return "<script>alert('게시글 등록이 안 되었습니다.');history.back();</script>"
+            return "<script>alert('등록 실패'); history.back();</script>"
 
     return render_template('filesboard_write.html')
-
-
-# 파일게시물 자세히보기
-@staticmethod
-def get_post_detail(post_id):
-    """게시글 상세 정보와 첨부파일 정보를 함께 조회"""
-    conn = Session.get_connection()
-    try:
-        with conn.cursor() as cursor:
-            # 1. 조회수 증가
-            cursor.execute("UPDATE posts SET view_count = view_count + 1 WHERE id = %s", (post_id,))
-
-            # 2. 게시글 정보 조회 (작성자 이름 포함)
-            sql_post = """
-                        SELECT p.*, m.name as writer_name 
-                        FROM posts p
-                        JOIN members m ON p.member_id = m.id
-                        WHERE p.id = %s
-                """
-            cursor.execute(sql_post, (post_id,))
-            post = cursor.fetchone()
-
-            # 3. 첨부파일 정보 조회
-            cursor.execute("SELECT * FROM attachments WHERE post_id = %s", (post_id,))
-            files = cursor.fetchall()
-
-            conn.commit()
-            return post, files
-            # post는 posts에 있는 자료, files는 첨부 파일에 대한 자료. 이 2개가 넘어감.
-    finally:
-        conn.close()
-
-
-# 파일 게시물 목록
-@staticmethod
-def get_posts():
-    """작성자 이름과 첨부파일 개수를 함께 조회"""
-    conn = Session.get_connection()
-    try:
-        with conn.cursor() as cursor:
-            # 서브쿼리를 사용하여 해당 게시글에 연결된 첨부파일 개수(file_count)를 가져옵니다.
-            sql = """
-                       SELECT p.*, m.name as writer_name,
-                              (SELECT COUNT(*) FROM attachments WHERE post_id = p.id) as file_count
-                       FROM posts p
-                       JOIN members m ON p.member_id = m.id
-                       ORDER BY p.created_at DESC
-                   """
-            cursor.execute(sql)
-            return cursor.fetchall()
-    finally:
-        conn.close()
-
-
 
 # 파일 게시판 목록
 @app.route('/filesboard')
@@ -699,7 +546,6 @@ def filesboard_view(post_id):
     if not post:
         return "<script>alert('해당 게시글이 없습니다.'); location.href='/filesboard';</script>"
     return render_template('filesboard_view.html', post=post, files=files)
-
 
 # send_from_directory 사용하여 자료 다운로드 가능
 @app.route('/download/<path:filename>')
@@ -717,9 +563,68 @@ def download_file(filename):
     #   저장할 파일명은 download_name=origin_name 로 지정
 
 
+@app.route('/filesboard/delete/<int:post_id>')
+def filesboard_delete(post_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # 삭제 전 작성자 확인을 위해 정보 조회
+    post, _ = PostService.get_post_detail(post_id)
+    # _은 리턴값을 사용하지 않겠다 라는 관례적인 표현 (_) 사용하지 않는 변수
+
+    ##################################################
+    # alert 창 (클라이언트 측) -> 브라우저에서 웹 http 에서
+    # 사용자가 버튼을 클릭하는 등 즉각적으로 발생.
+    # 브라우저 전용 팝업 (디자인 투박함)
+    # 저장되지 않음 (일시적)
+    # 정말 삭제하시겠습니까? (확인용)
+    ##################################################
+
+    # flash 창 (서버 측) -> python (Flask)
+    # 페이지가 새로고침( 이동) 된 후에 발생
+    # HTML 문서의 일부 (디자인이 자유로움)
+    # 서버 세션이 잠시 동안 저장됨
+    # 글 작성이 완료되었다 이후 목록으로 이동.
+    ##################################################
+
+    if not post:
+        return "<script>alert('이미 삭제된 게시글입니다.'); location.href='/filesboard';</script>"
+
+    # 본인 확인 (또는 관리자 권한)
+    if post['member_id'] != session['user_id'] and session.get('user_role') != 'admin':
+        return "<script>alert('삭제 권한이 없습니다.'); history.back();</script>"
+
+    if PostService.delete_post(post_id):
+        return "<script>alert('성공적으로 삭제되었습니다.'); location.href='/filesboard';</script>"
+    else:
+        return "<script>alert('삭제 중 오류가 발생했습니다.'); history.back();</script>"
 
 
-############################################# 파일 upload 게시판 The end. ################################################
+
+# 다중파일 수정용
+@app.route('/filesboard/edit/<int:post_id>', methods=['GET', 'POST'])
+def filesboard_edit(post_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        files = request.files.getlist('files')  # 다중 파일 가져오기
+
+        if PostService.update_post(post_id, title, content, files):
+            return f"<script>alert('수정되었습니다.'); location.href='/filesboard/view/{post_id}';</script>"
+        return "<script>alert('수정 실패'); history.back();</script>"
+
+    # GET 요청 시 기존 데이터 로드
+    post, files = PostService.get_post_detail(post_id)
+    if post['member_id'] != session['user_id']:
+        return "<script>alert('권한이 없습니다.'); history.back();</script>"
+
+    return render_template('filesboard_edit.html', post=post, files=files)
+
+
+###################################### 파일upload 게시판 end ################################################
 
 
 @app.route('/') # url 생성용 코드 http://localhost:5000/ or http://192.168.0.???:5000
@@ -730,8 +635,7 @@ def index():
 
 if __name__ == '__main__':
 
-    app.run(host='0.0.0.0', port=5000, debug=True)
-    # port 번호 5000 은 강사님 번호이고 5001 번부터 연습하면 됨.
-    # host='0.0.0.0' 누가요청하던 응답해라(모두 들어올 수 있게 설정함)
+    app.run(host='0.0.0.0', port=5001, debug=True)
+    # host='0.0.0.0' 누가요청하던 응답해라
     # port=5000 플라스크에서 사용하는 포트번호
     # debug=True 콘솔에서 디버그를 보겠다.
