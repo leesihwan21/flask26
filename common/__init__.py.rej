@@ -1,0 +1,7 @@
+diff a/common/__init__.py b/common/__init__.py	(rejected hunks)
+@@ -0,0 +1,4 @@
++from LMS.common.session import Session
++
++__all__ = ['Session']
++# 패키지 import 뒤에 * 처리용
+\ No newline at end of file
